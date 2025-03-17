@@ -1,0 +1,45 @@
+services:
+  # Neo4j Service
+  neo4j:
+    image: neo4j:5.10.0
+    container_name: neo4j-container
+    environment:
+      - NEO4J_AUTH=neo4j/12345678  # Set Neo4j credentials
+    ports:
+      - "7474:7474"  # HTTP port for browser
+      - "7687:7687"  # Bolt protocol port for the Neo4j database
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=10 --spider localhost:7474 || exit 1"] 
+    volumes:
+      - neo4j_data:/data
+    tmpfs:
+      - /var/lib/neo4j/run
+    networks:
+      - neo4j-express-network
+
+  # Express.js Service
+  express-app:
+    build: ./
+    container_name: express-app
+    ports:
+      - "3000:3000"  # Expose app port to the host machine
+      - "9229:9229"  # Expose the debugging port to the host machine
+    environment:
+      - NEO4J_URI=neo4j://neo4j:7687  # Neo4j URI
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=12345678
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - app-storage:/usr/src/storage
+    networks:
+      - neo4j-express-network
+
+volumes:
+  neo4j_data:
+  app-storage:
+
+networks:
+  neo4j-express-network:
+    driver: bridge
